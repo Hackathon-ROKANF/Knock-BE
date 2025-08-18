@@ -1,4 +1,4 @@
-package com.springboot.kncokbe;
+package com.springboot.knockbe;
 
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;

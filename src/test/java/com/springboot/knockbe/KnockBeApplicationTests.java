@@ -1,10 +1,10 @@
-package com.springboot.kncokbe;
+package com.springboot.knockbe;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class KncokBeApplicationTests {
+class KnockBeApplicationTests {
 
     @Test
     void contextLoads() {

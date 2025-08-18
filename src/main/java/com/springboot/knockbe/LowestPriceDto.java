@@ -1,4 +1,4 @@
-package com.springboot.kncokbe;
+package com.springboot.knockbe;
 
 public class LowestPriceDto {
     private String address;

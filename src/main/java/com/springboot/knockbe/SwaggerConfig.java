@@ -1,4 +1,4 @@
-package com.springboot.kncokbe;
+package com.springboot.knockbe;
 
 import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
