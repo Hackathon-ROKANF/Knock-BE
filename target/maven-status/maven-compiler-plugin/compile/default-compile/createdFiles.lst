@@ -1,5 +1,6 @@
 com/springboot/knockbe/BdsPlaywrightCrawler.class
 com/springboot/knockbe/BdsPlaywrightCrawler$UrlPair.class
+com/springboot/knockbe/WebConfig.class
 com/springboot/knockbe/SwaggerConfig.class
 com/springboot/knockbe/LowestPriceDto.class
 com/springboot/knockbe/KnockBeApplication.class
