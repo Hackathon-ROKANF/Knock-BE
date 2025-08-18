@@ -81,12 +81,27 @@ public class BdsPlaywrightCrawler {
         try {
             // Playwright 생성 시 더 강력한 예외 처리
             try {
+                log.info("Playwright 초기화 시작...");
+
+                // 브라우저 자동 다운로드를 위한 시스템 속성 설정
+                System.setProperty("playwright.cli.dir", "/ms-playwright");
+                System.setProperty("playwright.skip_browser_download", "false");
+
                 pw = Playwright.create();
+                log.info("Playwright 초기화 성공");
             } catch (Exception e) {
                 log.error("Playwright 생성 실패: {}", e.getMessage());
+
                 // 브라우저 바이너리 경로 확인 시도
                 String playwrightPath = System.getenv("PLAYWRIGHT_BROWSERS_PATH");
                 log.info("PLAYWRIGHT_BROWSERS_PATH: {}", playwrightPath);
+
+                // ZipException이 발생한 경우 특별 처리
+                if (e.getMessage() != null && e.getMessage().contains("ZipException")) {
+                    log.error("브라우저 드라이버 압축 파일 손상 - 시스템 종속성 문제일 수 있습니다");
+                    throw new RuntimeException("Playwright 드라이버 압축 해제 실패 - 컨테이너 환경 설정을 확인하세요", e);
+                }
+
                 throw new RuntimeException("Playwright 초기화 실패 - 브라우저 바이너리를 찾을 수 없습니다", e);
             }
 

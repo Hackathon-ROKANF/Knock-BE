@@ -1,68 +1,39 @@
-# Cloudtype 배포를 위한 Dockerfile
-FROM openjdk:17-jdk-slim
+# Multi-stage Dockerfile for Playwright Java application
 
-# 시스템 패키지 업데이트 및 필수 의존성 설치
-RUN apt-get update && apt-get install -y \
-    wget \
-    gnupg \
-    ca-certificates \
-    fonts-liberation \
-    libasound2 \
-    libatk-bridge2.0-0 \
-    libatk1.0-0 \
-    libatspi2.0-0 \
-    libcups2 \
-    libdrm2 \
-    libgtk-3-0 \
-    libnspr4 \
-    libnss3 \
-    libxcomposite1 \
-    libxdamage1 \
-    libxfixes3 \
-    libxrandr2 \
-    libxss1 \
-    libxtst6 \
-    xdg-utils \
-    libgbm1 \
-    libxkbcommon0 \
-    && rm -rf /var/lib/apt/lists/*
+# Stage 1: Build stage
+FROM maven:3.9-eclipse-temurin-17 AS build
 
-# 작업 디렉토리 설정
 WORKDIR /app
 
-# Maven wrapper와 pom.xml 복사
+# Copy Maven wrapper and pom.xml
 COPY mvnw .
 COPY mvnw.cmd .
 COPY pom.xml .
 COPY .mvn .mvn
 
-# 의존성 다운로드 (캐시 최적화)
+# Download dependencies (for caching)
 RUN ./mvnw dependency:resolve
 
-# 소스 코드 복사
+# Copy source code
 COPY src src
 
-# 애플리케이션 빌드
+# Build application
 RUN ./mvnw clean package -DskipTests
 
-# Playwright 브라우저 의존성을 위한 추가 패키지 설치
-RUN apt-get update && apt-get install -y \
-    libnss3-dev \
-    libatk-bridge2.0-dev \
-    libdrm2 \
-    libxkbcommon0 \
-    libgbm1 \
-    libxss1 \
-    libasound2 \
-    && rm -rf /var/lib/apt/lists/*
+# Stage 2: Runtime stage with Playwright
+FROM mcr.microsoft.com/playwright/java:v1.45.0-jammy
 
-# Playwright 환경 변수 설정 - 자동 다운로드 허용
+WORKDIR /app
+
+# Set Playwright environment variables
+ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=false
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-# 브라우저가 설치될 디렉토리 생성
-RUN mkdir -p /ms-playwright
+# Copy the built JAR from build stage
+COPY --from=build /app/target/getprice-0.0.1-SNAPSHOT.jar app.jar
 
-# 애플리케이션 실행
+# Expose port
 EXPOSE 8080
-CMD ["java", "-jar", "target/getprice-0.0.1-SNAPSHOT.jar"]
+
+# Run the application
+CMD ["java", "-jar", "app.jar"]
