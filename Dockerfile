@@ -45,13 +45,23 @@ COPY src src
 # 애플리케이션 빌드
 RUN ./mvnw clean package -DskipTests
 
-# Java Playwright용 브라우저 설치
-# 빌드된 JAR에서 Playwright 브라우저를 설치
-RUN java -cp target/getprice-0.0.1-SNAPSHOT.jar com.microsoft.playwright.CLI install chromium --with-deps || true
+# Playwright 브라우저 의존성을 위한 추가 패키지 설치
+RUN apt-get update && apt-get install -y \
+    libnss3-dev \
+    libatk-bridge2.0-dev \
+    libdrm2 \
+    libxkbcommon0 \
+    libgbm1 \
+    libxss1 \
+    libasound2 \
+    && rm -rf /var/lib/apt/lists/*
 
-# Playwright 환경 변수 설정
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+# Playwright 환경 변수 설정 - 자동 다운로드 허용
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=false
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+# 브라우저가 설치될 디렉토리 생성
+RUN mkdir -p /ms-playwright
 
 # 애플리케이션 실행
 EXPOSE 8080
