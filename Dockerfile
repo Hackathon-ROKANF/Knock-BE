@@ -25,12 +25,31 @@ FROM mcr.microsoft.com/playwright/java:v1.45.0-jammy
 
 WORKDIR /app
 
+# Install additional dependencies for Playwright
+RUN apt-get update && apt-get install -y \
+    wget \
+    ca-certificates \
+    fonts-liberation \
+    libasound2 \
+    libatk-bridge2.0-0 \
+    libdrm2 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
+    libgbm1 \
+    libxss1 \
+    libgconf-2-4 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Set Playwright environment variables
-ENV PLAYWRIGHT_BROWSERS_PATH=/root/.cache/ms-playwright
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=false
 
 # Copy the built JAR from build stage
 COPY --from=build /app/target/getprice-0.0.1-SNAPSHOT.jar app.jar
+
+# Install Playwright browsers explicitly
+RUN playwright install chromium
 
 # Expose port
 EXPOSE 8080
