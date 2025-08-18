@@ -35,12 +35,32 @@ public class PlaywrightProcessCrawler {
             Path scriptPath = Files.createTempFile("playwright-script", ".js");
             Files.write(scriptPath, script.getBytes());
 
+            // Node.js 경로 찾기
+            String[] nodeCommands = {"node", "/usr/bin/node", "/usr/local/bin/node"};
+            String nodeCommand = "node";
+
+            for (String cmd : nodeCommands) {
+                try {
+                    Process testProcess = new ProcessBuilder(cmd, "--version").start();
+                    if (testProcess.waitFor(5, TimeUnit.SECONDS) && testProcess.exitValue() == 0) {
+                        nodeCommand = cmd;
+                        log.info("Node.js 발견: {}", cmd);
+                        break;
+                    }
+                } catch (Exception e) {
+                    log.debug("Node.js 경로 테스트 실패: {}", cmd);
+                }
+            }
+
             // Playwright 실행
-            ProcessBuilder pb = new ProcessBuilder(
-                "node", scriptPath.toString()
-            );
+            ProcessBuilder pb = new ProcessBuilder(nodeCommand, scriptPath.toString());
             pb.redirectErrorStream(true);
 
+            // 환경변수 설정
+            pb.environment().put("NODE_PATH", "/usr/lib/node_modules");
+            pb.environment().put("PATH", System.getenv("PATH") + ":/usr/bin:/usr/local/bin");
+
+            log.info("Playwright 프로세스 시작: {} {}", nodeCommand, scriptPath);
             Process process = pb.start();
 
             // 출력 읽기
