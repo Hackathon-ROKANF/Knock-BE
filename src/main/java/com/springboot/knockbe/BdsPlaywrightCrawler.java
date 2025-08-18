@@ -67,6 +67,12 @@ public class BdsPlaywrightCrawler {
     public LowestPriceDto fetchLowestByAddress(String address) {
         log.info("크롤링 시작: {}", address);
 
+        // Cloudtype 환경 감지
+        boolean isCloudtype = isCloudtypeEnvironment();
+        if (isCloudtype) {
+            log.info("Cloudtype 환경 감지됨 - 최적화된 설정 적용");
+        }
+
         Playwright pw = null;
         Browser browser = null;
         BrowserContext context = null;
@@ -74,16 +80,63 @@ public class BdsPlaywrightCrawler {
 
         try {
             pw = Playwright.create();
+
+            // 배포 환경을 위한 더 강력한 브라우저 옵션
+            List<String> args = new ArrayList<>(List.of(
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--disable-features=VizDisplayCompositor",
+                "--disable-web-security",
+                "--disable-background-timer-throttling",
+                "--disable-backgrounding-occluded-windows",
+                "--disable-renderer-backgrounding",
+                "--disable-extensions",
+                "--disable-plugins",
+                "--disable-images",
+                "--disable-java",
+                "--disable-javascript",
+                "--single-process",
+                "--no-zygote",
+                "--memory-pressure-off",
+                "--max_old_space_size=4096",
+                "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            ));
+
+            // Cloudtype 환경에서 추가 최적화 옵션
+            if (isCloudtype) {
+                args.addAll(List.of(
+                    "--disable-setuid-sandbox",
+                    "--disable-accelerated-2d-canvas",
+                    "--no-first-run",
+                    "--disable-default-apps",
+                    "--disable-sync",
+                    "--disable-translate",
+                    "--hide-scrollbars",
+                    "--metrics-recording-only",
+                    "--mute-audio",
+                    "--no-default-browser-check",
+                    "--no-pings",
+                    "--password-store=basic",
+                    "--use-mock-keychain"
+                ));
+            }
+
+            // 환경변수로 추가 옵션 제어 가능
+            String additionalArgs = System.getenv("PLAYWRIGHT_BROWSER_ARGS");
+            if (additionalArgs != null && !additionalArgs.trim().isEmpty()) {
+                args.addAll(Arrays.asList(additionalArgs.split(",")));
+            }
+
+            log.info("브라우저 실행 시도 - 헤드리스 모드, 추가 옵션: {}", args.size());
+
+            // Cloudtype 환경에서는 더 긴 타임아웃 사용
+            int launchTimeout = isCloudtype ? 60000 : 30000;
+
             browser = pw.chromium().launch(new BrowserType.LaunchOptions()
                     .setHeadless(true)
-                    .setArgs(List.of(
-                        "--no-sandbox",
-                        "--disable-dev-shm-usage",
-                        "--disable-gpu",
-                        "--disable-features=VizDisplayCompositor",
-                        "--disable-web-security",
-                        "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
-                    )));
+                    .setArgs(args)
+                    .setTimeout(launchTimeout)); // 환경에 따른 타임아웃 조정
 
             context = browser.newContext(new Browser.NewContextOptions()
                     .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
@@ -147,7 +200,20 @@ public class BdsPlaywrightCrawler {
             return dto;
 
         } catch (Exception e) {
-            log.error("크롤링 오류: {}", e.getMessage());
+            log.error("크롤링 오류: {}", e.getMessage(), e);
+            log.error("크롤링 오류 상세 정보 - 클래스: {}, 메시지: {}", e.getClass().getSimpleName(), e.getMessage());
+
+            // 특정 오류에 대한 추가 정보 제공
+            if (e.getMessage() != null) {
+                if (e.getMessage().contains("Failed to create driver")) {
+                    log.error("브라우저 드라이버 생성 실패 - Playwright 설치 상태를 확인하세요");
+                } else if (e.getMessage().contains("chromium")) {
+                    log.error("Chromium 브라우저 실행 실패 - 배포 환경에서 브라우저 의존성을 확인하세요");
+                } else if (e.getMessage().contains("timeout")) {
+                    log.error("타임아웃 오류 - 네트워크 연결 또는 서버 응답 시간을 확인하세요");
+                }
+            }
+
             return createFallbackResponse(address, "크롤링 오류: " + e.getMessage());
         } finally {
             cleanupResources(page, context, browser, pw);
@@ -544,5 +610,20 @@ public class BdsPlaywrightCrawler {
             this.saleUrl = saleUrl;
             this.rentUrl = rentUrl;
         }
+    }
+
+    /**
+     * Cloudtype 환경 감지
+     */
+    private boolean isCloudtypeEnvironment() {
+        // 환경변수 기반 감지
+        String port = System.getenv("PORT");
+        String hostname = System.getenv("HOSTNAME");
+        String cloudtypeApp = System.getenv("CLOUDTYPE_APP_NAME");
+
+        // Cloudtype 특징적인 환경변수들 확인
+        return cloudtypeApp != null ||
+               (port != null && hostname != null && hostname.contains("cloudtype")) ||
+               System.getProperty("java.io.tmpdir", "").contains("cloudtype");
     }
 }
