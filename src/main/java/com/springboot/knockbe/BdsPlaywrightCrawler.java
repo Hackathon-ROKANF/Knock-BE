@@ -79,7 +79,16 @@ public class BdsPlaywrightCrawler {
         Page page = null;
 
         try {
-            pw = Playwright.create();
+            // Playwright 생성 시 더 강력한 예외 처리
+            try {
+                pw = Playwright.create();
+            } catch (Exception e) {
+                log.error("Playwright 생성 실패: {}", e.getMessage());
+                // 브라우저 바이너리 경로 확인 시도
+                String playwrightPath = System.getenv("PLAYWRIGHT_BROWSERS_PATH");
+                log.info("PLAYWRIGHT_BROWSERS_PATH: {}", playwrightPath);
+                throw new RuntimeException("Playwright 초기화 실패 - 브라우저 바이너리를 찾을 수 없습니다", e);
+            }
 
             // 배포 환경을 위한 더 강력한 브라우저 옵션
             List<String> args = new ArrayList<>(List.of(
@@ -95,7 +104,6 @@ public class BdsPlaywrightCrawler {
                 "--disable-plugins",
                 "--disable-images",
                 "--disable-java",
-                "--disable-javascript",
                 "--single-process",
                 "--no-zygote",
                 "--memory-pressure-off",

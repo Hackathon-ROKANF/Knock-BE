@@ -23,6 +23,8 @@ RUN apt-get update && apt-get install -y \
     libxss1 \
     libxtst6 \
     xdg-utils \
+    libgbm1 \
+    libxkbcommon0 \
     && rm -rf /var/lib/apt/lists/*
 
 # 작업 디렉토리 설정
@@ -43,10 +45,13 @@ COPY src src
 # 애플리케이션 빌드
 RUN ./mvnw clean package -DskipTests
 
-# Playwright 브라우저 설치
-RUN apt-get update && apt-get install -y nodejs npm
-RUN npx playwright install chromium
-RUN npx playwright install-deps chromium
+# Java Playwright용 브라우저 설치
+# 빌드된 JAR에서 Playwright 브라우저를 설치
+RUN java -cp target/getprice-0.0.1-SNAPSHOT.jar com.microsoft.playwright.CLI install chromium --with-deps || true
+
+# Playwright 환경 변수 설정
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=false
 
 # 애플리케이션 실행
 EXPOSE 8080
