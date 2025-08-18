@@ -83,11 +83,23 @@ public class BdsPlaywrightCrawler {
             try {
                 log.info("Playwright 초기화 시작...");
 
+                // 배포 환경에서는 시스템 속성을 강제로 설정
+                if (isCloudtype) {
+                    log.info("배포 환경 감지 - 시스템 Playwright 사용 설정");
+                    // JAR 드라이버 사용 비활성화
+                    System.setProperty("playwright.driver.impl", "shell");
+                    System.setProperty("playwright.cli.executable", "/usr/local/bin/playwright");
+                    // 브라우저 경로 설정
+                    System.setProperty("playwright.browsers.download.dir", "/ms-playwright");
+                    System.setProperty("PLAYWRIGHT_BROWSERS_PATH", "/ms-playwright");
+                }
+
                 // 환경 변수 확인 및 로깅
                 String playwrightPath = System.getenv("PLAYWRIGHT_BROWSERS_PATH");
                 String skipDownload = System.getenv("PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD");
                 log.info("PLAYWRIGHT_BROWSERS_PATH: {}", playwrightPath);
                 log.info("PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: {}", skipDownload);
+                log.info("playwright.driver.impl: {}", System.getProperty("playwright.driver.impl"));
 
                 // Playwright 생성
                 pw = Playwright.create();
@@ -96,21 +108,10 @@ public class BdsPlaywrightCrawler {
                 log.error("Playwright 생성 실패: {}", e.getMessage());
                 log.error("예외 상세:", e);
 
-                // 환경별 대안 처리
+                // 배포 환경에서의 대안 처리
                 if (isCloudtype) {
-                    log.warn("Cloudtype 환경에서 Playwright 초기화 실패 - 대안 방법 시도");
-                    // 시스템 속성 재설정
-                    System.setProperty("playwright.browsers.download.dir", "/ms-playwright");
-                    System.setProperty("playwright.skip_browser_download", "false");
-
-                    try {
-                        Thread.sleep(2000); // 잠시 대기 후 재시도
-                        pw = Playwright.create();
-                        log.info("Playwright 재시도 초기화 성공");
-                    } catch (Exception retryException) {
-                        log.error("Playwright 재시도도 실패: {}", retryException.getMessage());
-                        throw new RuntimeException("Playwright 초기화 실패 - 브라우저 바이너리를 찾을 수 없습니다", retryException);
-                    }
+                    log.warn("배포 환경에서 Playwright 초기화 실패 - 시스템 명령어로 대체");
+                    throw new RuntimeException("Playwright 초기화 실패 - 시스템에서 브라우저를 찾을 수 없습니다", e);
                 } else {
                     throw new RuntimeException("Playwright 초기화 실패 - 브라우저 바이너리를 찾을 수 없습니다", e);
                 }
