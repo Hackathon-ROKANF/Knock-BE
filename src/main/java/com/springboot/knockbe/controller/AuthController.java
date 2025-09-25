@@ -6,6 +6,7 @@ import com.springboot.knockbe.util.JwtUtil;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -56,33 +58,29 @@ public class AuthController {
 
     @GetMapping("/kakao/callback")
     @Operation(summary = "카카오 로그인 콜백", description = "카카오에서 인증 후 호출되는 콜백 엔드포인트입니다.")
-    public ResponseEntity<Map<String, String>> kakaoCallback(
+    public ResponseEntity<Void> kakaoCallback(
             @Parameter(description = "카카오에서 전달받은 인증 코드")
             @RequestParam(required = false) String code,
             @RequestParam(required = false) String error,
-            @RequestParam(required = false) String error_description) {
+            @RequestParam(required = false) String error_description,
+            HttpServletResponse response) throws IOException {
 
         try {
             // 에러가 있는 경우 처리
             if (error != null) {
                 log.error("카카오 로그인 에러 - error: {}, description: {}", error, error_description);
 
-                Map<String, String> response = new HashMap<>();
-                response.put("error", "카카오 로그인이 취소되었거나 실패했습니다.");
-                response.put("message", error_description != null ? error_description : "로그인이 취소되었습니다.");
-
-                return ResponseEntity.badRequest().body(response);
+                // 에러 시 프론트엔드로 리다이렉트 (에러 파라미터 포함)
+                response.sendRedirect("https://knock-knock.site/login?error=login_failed");
+                return ResponseEntity.status(HttpStatus.FOUND).build();
             }
 
             // code가 없는 경우
             if (code == null || code.trim().isEmpty()) {
                 log.warn("인증 코드가 전달되지 않음");
 
-                Map<String, String> response = new HashMap<>();
-                response.put("error", "인증 코드가 없습니다.");
-                response.put("message", "카카오 로그인 과정에서 문제가 발생했습니다.");
-
-                return ResponseEntity.badRequest().body(response);
+                response.sendRedirect("https://knock-knock.site/login?error=login_failed");
+                return ResponseEntity.status(HttpStatus.FOUND).build();
             }
 
             log.info("카카오 로그인 콜백 시작 - code: {}", code.substring(0, Math.min(code.length(), 20)) + "...");
@@ -91,12 +89,9 @@ public class AuthController {
             if (isJwtToken(code)) {
                 log.warn("JWT 토큰이 code로 전달됨. 이미 로그인된 상태입니다.");
 
-                Map<String, String> response = new HashMap<>();
-                response.put("error", "이미 로그인된 상태입니다.");
-                response.put("message", "다시 로그인할 필요가 없습니다.");
-                response.put("token", code); // 기존 토큰 반환
-
-                return ResponseEntity.ok(response);
+                // 이미 토큰이 있는 경우 바로 메인 페이지로
+                response.sendRedirect("https://knock-knock.site/?token=" + code);
+                return ResponseEntity.status(HttpStatus.FOUND).build();
             }
 
             // 카카오 인증 코드 유효성 검증
@@ -104,31 +99,25 @@ public class AuthController {
                 log.warn("유효하지 않은 카카오 인증 코드: 길이={}, 시작문자={}",
                         code.length(), code.substring(0, Math.min(code.length(), 5)));
 
-                Map<String, String> response = new HashMap<>();
-                response.put("error", "유효하지 않은 인증 코드입니다.");
-                response.put("message", "카카오 인증 코드 형식이 올바르지 않습니다.");
-
-                return ResponseEntity.badRequest().body(response);
+                response.sendRedirect("https://knock-knock.site/login?error=login_failed");
+                return ResponseEntity.status(HttpStatus.FOUND).build();
             }
 
             // 카카오 로그인 처리
             String jwtToken = kakaoOAuth2Service.loginOrRegister(code);
 
-            Map<String, String> response = new HashMap<>();
-            response.put("token", jwtToken);
-            response.put("message", "로그인이 성공적으로 완료되었습니다.");
-
             log.info("카카오 로그인 성공");
-            return ResponseEntity.ok(response);
+
+            // 성공 시 JWT 토큰과 함께 프론트엔드 메인 페이지로 리다이렉트
+            response.sendRedirect("https://knock-knock.site/?token=" + jwtToken);
+            return ResponseEntity.status(HttpStatus.FOUND).build();
 
         } catch (Exception e) {
             log.error("카카오 로그인 실패", e);
 
-            Map<String, String> errorResponse = new HashMap<>();
-            errorResponse.put("error", "로그인에 실패했습니다.");
-            errorResponse.put("message", e.getMessage());
-
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+            // 예외 발생 시 에러 페이지로 리다이렉트
+            response.sendRedirect("https://knock-knock.site/login?error=login_failed");
+            return ResponseEntity.status(HttpStatus.FOUND).build();
         }
     }
 
