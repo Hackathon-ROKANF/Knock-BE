@@ -19,6 +19,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/auth")
 @Tag(name = "인증", description = "카카오 소셜 로그인 API")
+@CrossOrigin(origins = {"http://localhost:5173", "https://www.knock-knock.site"})
 public class AuthController {
 
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);

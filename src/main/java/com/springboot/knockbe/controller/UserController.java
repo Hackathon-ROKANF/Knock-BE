@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -17,6 +18,7 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/api/user")
 @Tag(name = "사용자", description = "사용자 프로필 API")
+@CrossOrigin(origins = {"http://localhost:5173", "https://www.knock-knock.site"})
 public class UserController {
 
     private final UserRepository userRepository;
