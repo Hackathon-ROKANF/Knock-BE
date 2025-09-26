@@ -22,15 +22,24 @@ public class AnalysisResult {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    // 다른 컬럼이 DB에 있어도 여기서 안 쓰면 매핑 안 해도 됨 (읽기 전용)
+    // features_json 전체 저장 (주소만 추출해 응답에 사용)
+    @Column(name = "features_json", columnDefinition = "TEXT")
+    private String featuresJson;
+
+    @Column(name = "prediction")
+    private String prediction; // 추가
 
     public AnalysisResult() {}
 
     public Long getId() { return id; }
     public Long getUserId() { return userId; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public String getFeaturesJson() { return featuresJson; }
+    public String getPrediction() { return prediction; } // 추가
 
     public void setId(Long id) { this.id = id; }
     public void setUserId(Long userId) { this.userId = userId; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public void setFeaturesJson(String featuresJson) { this.featuresJson = featuresJson; }
+    public void setPrediction(String prediction) { this.prediction = prediction; } // 추가
 }
